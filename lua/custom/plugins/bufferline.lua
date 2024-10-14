@@ -13,6 +13,7 @@ return {
 
     vim.api.nvim_set_keymap('n', '<Tab>', '<CMD>BufferLineCycleNext<CR>', { noremap = true, silent = true })
     vim.api.nvim_set_keymap('n', '<S-Tab>', '<CMD>BufferLineCyclePrev<CR>', { noremap = true, silent = true })
-    -- vim.api.nvim_set_keymap('n', '<S-t>', '<CMD>BufferLineCycleWindowlessToggle<CR>', { noremap = true, silent = true })
+    vim.api.nvim_set_keymap('n', '<leader>x', '<CMD>bdelete<CR>', { noremap = true, silent = true, desc = 'close the current buffer' })
+    vim.api.nvim_set_keymap('n', '<leader>X', '<CMD>bdelete!<CR>', { noremap = true, silent = true, desc = 'close the current buffer and delete changes' })
   end,
 }
