@@ -1,7 +1,10 @@
 local M = {}
 
--- TODO: cleanup and organise the code
--- TODO: I can't update the input to make the chat area larger, however I can add some custom buffers to help with that.
+-- TODO: ChatGPT as an LLM option
+-- TODO: Abstract the Gemini integration
+-- TODO: Ollama Support
+-- TODO: Claud Support
+-- TODO: special buffer for sending larger multi-line chats.
 -- TODO: setup tracking and rendering chat history. (do this after implementing different model modules)
 
 -- Utility to make async HTTP requests
@@ -11,7 +14,6 @@ local Job = require 'plenary.job'
 local pickers = require 'telescope.pickers'
 local finders = require 'telescope.finders'
 local previewers = require 'telescope.previewers'
-local state = require 'telescope.state'
 local actions = require 'telescope.actions'
 local action_state = require 'telescope.actions.state'
 
@@ -23,6 +25,23 @@ end
 
 local llm_api_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' .. api_key
 
+local opts = {
+  chat = {
+    username = 'User',
+    modelname = 'Gemini',
+  },
+  telescope = {
+    preview_width = 0.65,
+  },
+  sender_padding = 100,
+  colors = {
+    model = '#7287fd',
+    you = '#8839ef',
+    chat_text = '#292c3c',
+  },
+}
+
+-- TODO: build an abstraction over the top of managing that chat. this will need to support multiple llms. (ollama, gemini, chatGPT, claud)
 -- Store chat messages
 local chat = {
   list = {},
@@ -91,7 +110,7 @@ local function append_message(sender, message)
 
   local lines = split_lines(message) -- Split multiline message into individual lines
 
-  table.insert(chat.chats[chat.active], sender .. ': ')
+  table.insert(chat.chats[chat.active], sender .. ': ' .. string.rep(' ', opts.sender_padding))
 
   for _, line in ipairs(lines) do
     table.insert(chat.chats[chat.active], '' .. line)
@@ -103,9 +122,11 @@ end
 -- Define a custom highlight group for "You:" and "Bot:"
 local function set_highlight_groups()
   -- Set highlight for "You:"
-  vim.api.nvim_set_hl(0, 'HighlightYou', { fg = '#8839ef', bold = true }) -- Green and bold
+  vim.api.nvim_set_hl(0, 'HighlightYou', { bg = opts.colors.you, bold = true }) -- Green and bold
   -- Set highlight for "Bot:"
-  vim.api.nvim_set_hl(0, 'HighlightBot', { fg = '#7287fd', bold = true }) -- Red and bold
+  vim.api.nvim_set_hl(0, 'HighlightBot', { bg = opts.colors.model, bold = true }) -- Red and bold
+
+  vim.api.nvim_set_hl(0, 'HighlightChat', { bg = opts.colors.chat_text, bold = true }) -- Red and bold
 end
 
 -- Function to highlight every instance of "You:" and "Bot:" in the buffer
@@ -123,14 +144,18 @@ local function highlight_you_and_bot(bufnr)
 
     -- Find all instances of "You:" and highlight them
     local start_you, end_you = line:find 'You:'
-    if start_you then
-      vim.api.nvim_buf_add_highlight(bufnr, -1, 'HighlightYou', i, start_you - 1, end_you)
+    if start_you and end_you then
+      vim.api.nvim_buf_add_highlight(bufnr, -1, 'HighlightYou', i, start_you - 1, end_you + opts.sender_padding)
     end
 
     -- Find all instances of "Bot:" and highlight them
     local start_bot, end_bot = line:find 'Bot:'
-    if start_bot then
-      vim.api.nvim_buf_add_highlight(bufnr, -1, 'HighlightBot', i, start_bot - 1, end_bot)
+    if start_bot and end_bot then
+      vim.api.nvim_buf_add_highlight(bufnr, -1, 'HighlightBot', i, start_bot - 1, end_bot + opts.sender_padding)
+    end
+
+    if not start_bot and not start_you then
+      vim.api.nvim_buf_add_highlight(bufnr, -1, 'HighlightChat', i, 0, -1)
     end
   end
 end
@@ -168,6 +193,8 @@ local function request_llm(prompt, callback)
         if response and response.candidates and response.candidates[1] and response.candidates[1].content and response.candidates[1].content.parts[1] then
           local message = response.candidates[1].content.parts[1].text
           callback(message)
+        elseif response and response.error and response.error.message then
+          callback('Error: ' .. response.error.message)
         else
           callback 'Error: No valid response from API.'
         end
@@ -176,23 +203,23 @@ local function request_llm(prompt, callback)
       end
     end,
   }):start()
-  -- :sync(10000, 1000)
 end
 
 local function get_previwer()
   return previewers.new_buffer_previewer {
     define_preview = function(self, entry, status)
+      local p_win = status.preview_win
+      local bufnr = self.state.bufnr
       -- Enable linebreak to ensure wrapping at word boundaries
       -- vim.api.nvim_win_set_option(status.preview_win, 'linebreak', true)
       -- Enable wrapping in the window
-      vim.api.nvim_win_set_option(status.preview_win, 'wrap', true)
+      vim.wo[p_win].wrap = true
+      -- Set the filetype to 'markdown' to enable Markdown syntax highlighting
+      vim.bo[bufnr].filetype = 'markdown'
 
       -- Set the preview content to the map value for the selected key
       local content = chat.chats[entry[1]]
       vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, content)
-
-      -- Set the filetype to 'markdown' to enable Markdown syntax highlighting
-      vim.api.nvim_buf_set_option(self.state.bufnr, 'filetype', 'markdown')
 
       highlight_you_and_bot(self.state.bufnr)
 
@@ -217,7 +244,8 @@ local function pop_preview_to_buffer(entry)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 
   -- Set syntax highlighting to markdown (if needed)
-  vim.api.nvim_buf_set_option(bufnr, 'filetype', 'markdown')
+  vim.bo[bufnr].filetype = 'markdown'
+  vim.bo[bufnr].modifiable = false
 
   local relative_win_size = 0.75
 
@@ -244,9 +272,8 @@ end
 -- Function to render chat window
 local function chat_window()
   local picker = pickers.new({
-    prompt_title = 'test',
     layout_config = {
-      preview_width = 0.65,
+      preview_width = opts.telescope.preview_width,
     },
   }, {
     prompt_title = 'Send message for: ' .. chat.active,
@@ -281,25 +308,25 @@ local function chat_window()
         local entry = action_state.get_selected_entry()
 
         -- if the hovered chat is different then update the selected chat.
-        if entry[1] ~= nil and entry[1] ~= '' and entry[1] ~= chat.active then
+        if entry and entry[1] ~= nil and entry[1] ~= '' and entry[1] ~= chat.active then
           chat.active = entry[1]
           chat.list[1], chat.list[entry.index] = chat.list[entry.index], chat.list[1]
         end
 
-        if table.getn(chat.list) <= 0 then
+        if table.maxn(chat.list) <= 0 then
           new_chat_session_v2()
         end
 
         -- if we have input and we're not already makeing an api request, make a request.
         if input and input ~= '' and chat.in_progress == false then
-          append_message('You', input) -- Append input to chat history
+          append_message(opts.chat.username, input) -- Append input to chat history
 
           chat.in_progress = true
           -- Make the LLM API request
           request_llm(input, function(bot_response)
             vim.schedule(function()
               chat.in_progress = false
-              append_message('Bot', bot_response)
+              append_message(opts.chat.modelname, bot_response)
               actions.close(prompt_bufnr)
               chat_window()
             end)
