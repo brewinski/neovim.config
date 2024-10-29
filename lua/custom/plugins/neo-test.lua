@@ -15,8 +15,9 @@ return {
     },
     config = function()
       require('neotest').setup {
+        log_level = vim.log.levels.INFO,
         adapters = {
-          require 'neotest-golang', -- { warn_test_not_executed = false }, -- Registration
+          require 'neotest-golang' {},
         },
       }
     end,
@@ -34,16 +35,6 @@ return {
           require('neotest').summary.toggle()
         end,
         desc = 'Test summary pannel',
-      },
-      {
-        '<leader>to',
-        function()
-          require('neotest').output.open { enter = true }
-        end,
-        desc = 'Test summary pannel',
-      },
-      {
-        '<leader>',
       },
     },
   },
