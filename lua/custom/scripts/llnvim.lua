@@ -143,13 +143,13 @@ local function highlight_you_and_bot(bufnr)
     local line = vim.api.nvim_buf_get_lines(bufnr, i, i + 1, false)[1]
 
     -- Find all instances of "You:" and highlight them
-    local start_you, end_you = line:find 'You:'
+    local start_you, end_you = line:find(opts.chat.username .. ':')
     if start_you and end_you then
       vim.api.nvim_buf_add_highlight(bufnr, -1, 'HighlightYou', i, start_you - 1, end_you + opts.sender_padding)
     end
 
     -- Find all instances of "Bot:" and highlight them
-    local start_bot, end_bot = line:find 'Bot:'
+    local start_bot, end_bot = line:find(opts.chat.modelname .. ':')
     if start_bot and end_bot then
       vim.api.nvim_buf_add_highlight(bufnr, -1, 'HighlightBot', i, start_bot - 1, end_bot + opts.sender_padding)
     end
@@ -267,6 +267,13 @@ local function pop_preview_to_buffer(entry)
     col = start_col,
     border = 'rounded',
   })
+
+  vim.defer_fn(function()
+    vim.cmd 'stopinsert'
+  end, 1)
+
+  vim.api.nvim_buf_set_keymap(bufnr, 'n', '<ESC>', '<CMD>stopinsert<CR><CMD>bdelete<CR>', { noremap = true, silent = true })
+  vim.api.nvim_buf_set_keymap(bufnr, 'i', '<ESC>', '<CMD>stopinsert<CR><CMD>bdelete<CR>', { noremap = true, silent = true })
 end
 
 -- Function to render chat window
@@ -360,9 +367,4 @@ M.setup = function()
   vim.keymap.set('n', '<leader>ch', chat_window, { noremap = true, silent = true })
 end
 
-M.setup()
-
-return {
-  dir = '~/noop',
-  dev = true,
-}
+return M
