@@ -1,16 +1,17 @@
---- Documentation for setting up Sourcegraph Cody
+--aa- Documentation for setting up Sourcegraph Cody
 --- Generating an access token: https://sourcegraph.com/docs/cli/how-tos/creating_an_access_token
 
 ---@class AvanteProviderFunctor
 local M = {}
 
-M.endpoint = 'https://canstar.sourcegraphcloud.com'
+M.endpoint = 'https://sourcegraph.com'
 M.api_key_name = 'SRC_ACCESS_TOKEN'
-M.max_tokens = 4000
+M.max_tokens = 7000
+M.max_output_tokens = 4000
 M.stream = true
 M.topK = -1
 M.topP = -1
-M.model = 'anthropic/claude-3-5-sonnet-20240620'
+M.model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest'
 M.proxy = nil
 M.allow_insecure = false -- Allow insecure server connections
 M.timeout = 30000 -- Timeout in milliseconds
@@ -46,27 +47,8 @@ M.parse_context_messages = function(context)
 end
 
 M.parse_messages = function(opts)
-  local cody_system_prompt = {
-    -- '\n',
-    -- 'At the end of EVERY request, output a compact list of the files that were used to help generate the response.',
-    -- 'example:',
-    -- 'given these context files: CACTCHUP.md, pkg/gateway/gateway.go, pkg/gateway/request.go, pkg/gateway/response.go',
-    -- 'this will be the following output format:',
-    -- '## context used:',
-    -- '  - CACTCHUP.md:10-20',
-    -- '  - pkg/gateway/gateway.go:1-15',
-    -- '',
-    -- '## context files:',
-    -- '  - CACTCHUP.md:10-20',
-    -- '  - pkg/gateway/gateway.go:1-15',
-    -- '  - pkg/gateway/request.go:100-151',
-    -- '  - pkg/gateway/response.go:255-453',
-    -- '',
-    -- 'when working with markdown, please generate inner code block using ~~~ rather than ```. the output of this chat is rendered using markdown and so outputting ``` will mess with the renderer.',
-  }
-
   local messages = {
-    { role = 'system', text = opts.system_prompt .. table.concat(cody_system_prompt, '\n') },
+    { role = 'system', text = opts.system_prompt },
   }
 
   vim.iter(M.parse_context_messages(M.cody_context)):each(function(msg)
@@ -85,6 +67,12 @@ end
 M.parse_response_data = function(data_stream, event_state, opts)
   if event_state == 'done' then
     opts.on_complete()
+    return
+  end
+
+  if event_state == 'error' then
+    vim.notify(vim.inspect { name = 'codyProvider', stream = data_stream, state = event_state, opts = opts }, 1, {})
+    opts.on_complete(data_stream)
     return
   end
 
@@ -174,10 +162,10 @@ M.parse_curl_args = function(provider, code_opts)
   -- Get Cody context
   -- local context_query = code_opts.messages[#code_opts.messages].content -- Use the last message as the context query
   -- M.get_cody_context(base.endpoint, context_query, api_key)
-  vim.api.nvim_notify(api_key .. '\n\n\n\n\n\n', 1, {})
+  -- vim.api.nvim_notify(api_key.. "\n\n\n\n\n\n", 1, {})
 
   return {
-    url = base.endpoint .. '/.api/completions/stream?api-version=2&client-name=web&client-version=0.0.1',
+    url = base.endpoint .. '/.api/completions/stream?api-version=2&client-name=vscode&client-version=1.34.3',
     timeout = base.timeout,
     insecure = false,
     headers = headers,
@@ -186,7 +174,7 @@ M.parse_curl_args = function(provider, code_opts)
       temperature = body_opts.temperature,
       topK = body_opts.topK,
       topP = body_opts.topP,
-      maxTokensToSample = body_opts.max_tokens,
+      maxTokensToSample = M.max_output_tokens,
       stream = true,
       messages = M.parse_messages(code_opts),
     }, {}),

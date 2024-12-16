@@ -2,16 +2,15 @@ local avante_cody = require 'custom.scripts.avante-cody'
 
 return {
   'yetone/avante.nvim',
-  -- name = 'yetone/avante.nvim',
-  -- dev = true,
-  -- dir = '~/Documents/github/avante.nvim',
+  dev = true,
+  dir = '~/Documents/github/avante.nvim',
   event = 'VeryLazy',
   lazy = true,
   version = false, -- set this if you want to always pull the latest change
   opts = {
     -- add any opts here
-    provider = 'copilot',
-    auto_suggestions_provider = 'copilot',
+    provider = 'work-cody',
+    auto_suggestions_provider = 'work-cody',
     copilot = {
       endpoint = 'https://api.githubcopilot.com',
       model = 'claude-3.5-sonnet',
@@ -19,9 +18,10 @@ return {
       allow_insecure = false, -- Allow insecure server connections
       timeout = 30000, -- Timeout in milliseconds
       temperature = 0,
+      max_tokens = 4096,
     },
     behaviour = {
-      auto_suggestions = true, -- Experimental stage
+      auto_suggestions = false, -- Experimental stage
       auto_set_highlight_group = true,
       auto_set_keymaps = true,
       auto_apply_diff_after_generation = false,
@@ -33,14 +33,19 @@ return {
       },
     },
     repo_map = {
-      ignore_patterns = { '%.git', '%.worktree', '__pycache__', 'node_modules', 'providers' }, -- ignore files matching these
+      ignore_patterns = { '%.git', '%.worktree', '__pycache__', 'node_modules', 'providers', 'vendor' }, -- ignore files matching these
+    },
+    file_selector = {
+      provider = 'auto',
+      -- Options override for custom providers
+      provider_opts = {},
     },
     vendors = {
       ['work-cody'] = {
-        model = avante_cody.model,
-        endpoint = avante_cody.endpoint,
-        api_key_name = avante_cody.api_key_name,
-        max_tokens = avante_cody.max_tokens,
+        model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
+        endpoint = 'https://canstar.sourcegraphcloud.com',
+        api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
+        max_tokens = 15000,
         stream = false,
         topK = avante_cody.topK,
         topP = avante_cody.topP,
@@ -51,15 +56,20 @@ return {
         parse_curl_args = avante_cody.parse_curl_args,
         parse_response_data = avante_cody.parse_response_data,
       },
-      -- endpoint = 'https://sourcegraph.com',
-      -- model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
-      -- timeout = 30000,
-      -- temperature = 0,
-      -- model = "anthropic::2024-10-22::claude-3-5-sonnet-latest"
-      -- model = "anthropic::2024-10-22::claude-3-5-haiku-latest"
-      -- model = "anthropic::2023-06-01::claude-3-haiku"
-      -- model = "mistral::v1::mixtral-8x7b-instruct"
-      -- model = "google::v1::gemini-1.5-flash"
+      ['cody'] = {
+        model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
+        endpoint = 'https://sourcegraph.com',
+        api_key_name = 'cmd:op read --account my.1password.com op://Developer/sourcegraph_apikey/credential',
+        max_tokens = avante_cody.max_output_tokens,
+        topK = avante_cody.topK,
+        topP = avante_cody.topP,
+        proxy = avante_cody.proxy,
+        allow_insecure = avante_cody.allow_insecure,
+        timeout = avante_cody.timeout,
+        temperature = avante_cody.temperature,
+        parse_curl_args = avante_cody.parse_curl_args,
+        parse_response_data = avante_cody.parse_response_data,
+      },
     },
   },
   -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
@@ -105,19 +115,3 @@ return {
     },
   },
 }
-
--- examples
--- local rpc = require("sg.rpc")
---
--- local path = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":p")
---
--- vim.api.nvim_notify(path .. "\n\n\n\n\n\n\n\n\n\n", 1, {})
---
--- rpc.get_remote_url(
---   path,
---   function(err, remote_url) vim.api.nvim_notify("\nresults: " .. vim.inspect(remote_url), 1, {}) end
--- )
---
--- rpc.get_search("AuthService", function(err, results)
---   -- vim.api.nvim_notify("err: " .. vim.inspect(err) .. "\nresults: " .. vim.inspect(results), 1, {})
--- end)

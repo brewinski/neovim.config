@@ -161,6 +161,9 @@ vim.opt.cursorline = true
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 10
 
+-- Set status line
+vim.opt.laststatus = 3
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -358,7 +361,7 @@ require('lazy').setup({
       { 'nvim-telescope/telescope-ui-select.nvim' },
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
-      { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
+      { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font, default = true },
     },
     config = function()
       -- Telescope is a fuzzy finder that comes with a lot of different things that
@@ -438,6 +441,22 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
+
+      -- Search lazyvim plugins
+      vim.keymap.set('n', '<leader>sp', function()
+        -- keep the function from collapse on save
+        builtin.find_files {
+          cwd = vim.fs.joinpath(vim.fn.stdpath 'data', 'lazy'),
+        }
+      end)
+
+      -- Grep Search lazyvim plugins
+      vim.keymap.set('n', '<leader>sl', function()
+        -- keep the function from collapse on save
+        builtin.live_grep {
+          cwd = vim.fs.joinpath(vim.fn.stdpath 'data', 'lazy'),
+        }
+      end)
     end,
   },
 
@@ -612,7 +631,15 @@ require('lazy').setup({
         -- language C
         clangd = {},
         -- language Go
-        gopls = {},
+        gopls = {
+          settings = {
+            gopls = {
+              staticcheck = true,
+              gofumpt = true,
+              usePlaceholders = true,
+            },
+          },
+        },
         -- pyright = {},
         -- language Rust
         rust_analyzer = {},
