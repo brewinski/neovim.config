@@ -38,7 +38,9 @@ return {
     file_selector = {
       provider = 'auto',
       -- Options override for custom providers
-      provider_opts = {},
+      provider_opts = {
+        previewer = require('telescope.config').values.file_previewer {},
+      },
     },
     vendors = {
       ['work-cody'] = {
