@@ -8,29 +8,35 @@ return {
       'nvim-treesitter/nvim-treesitter',
       {
         'fredrikaverpil/neotest-golang', -- Installation
-        dependencies = {
-          'leoluz/nvim-dap-go',
-        },
+        version = '*',
       },
+      -- 'nvim-neotest/neotest-go',
     },
     config = function()
       require('neotest').setup {
         log_level = vim.log.levels.INFO,
         adapters = {
           require 'neotest-golang' {},
+          -- require 'neotest-go',
         },
       }
     end,
     keys = {
+      -- {
+      --   '<leader><leader>tf',
+      --   function()
+      --     require('neotest').run.run(vim.fn.expand '%')
+      --   end,
+      -- },
       {
-        '<leader>td',
+        '<leader><leader>tn',
         function()
           require('neotest').run.run { suite = false, strategy = 'dap' }
         end,
         desc = 'Debug nearest test',
       },
       {
-        '<leader>tp',
+        '<leader><leader>tp',
         function()
           require('neotest').summary.toggle()
         end,

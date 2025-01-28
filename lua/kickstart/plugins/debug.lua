@@ -29,10 +29,10 @@ return {
     local dapui = require 'dapui'
     return {
       -- Basic debugging keymaps, feel free to change to your liking!
-      { '<leader>1c', dap.continue, desc = 'Debug: Start/Continue' },
-      { '<leader>1i', dap.step_into, desc = 'Debug: Step Into' },
-      { '<leader>1o', dap.step_over, desc = 'Debug: Step Over' },
-      { '<leader>1t', dap.step_out, desc = 'Debug: Step Out' },
+      { '<leader><leader>a', dap.continue, desc = 'Debug: Start/Continue' },
+      { '<leader><leader>s', dap.step_into, desc = 'Debug: Step Into' },
+      { '<leader><leader>d', dap.step_over, desc = 'Debug: Step Over' },
+      { '<leader><leader>f', dap.step_out, desc = 'Debug: Step Out' },
       { '<leader>b', dap.toggle_breakpoint, desc = 'Debug: Toggle Breakpoint' },
       {
         '<leader>B',
@@ -42,7 +42,7 @@ return {
         desc = 'Debug: Set Breakpoint',
       },
       -- Toggle to see last session result. Without this, you can't see session output in case of unhandled exception.
-      { '<leader>1u', dapui.toggle, desc = 'Debug: See last session result.' },
+      { '<leader><leader>tl', dapui.toggle, desc = 'Debug: See last session result.' },
       unpack(keys),
     }
   end,

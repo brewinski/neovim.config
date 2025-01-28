@@ -36,7 +36,7 @@ return {
       ignore_patterns = { '%.git', '%.worktree', '__pycache__', 'node_modules', 'providers', 'vendor' }, -- ignore files matching these
     },
     file_selector = {
-      provider = 'auto',
+      provider = 'telescope',
       -- Options override for custom providers
       provider_opts = {
         previewer = require('telescope.config').values.file_previewer {},
