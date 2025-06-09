@@ -8,8 +8,8 @@ return {
   opts = {
     mode = 'legacy',
     -- add any opts here
-    provider = 'cody-claude-3.5',
-    auto_suggestions_provider = 'cody-claude-3.5',
+    provider = 'sg-claude-4',
+    auto_suggestions_provider = 'sg-claude-4',
     providers = {
       copilot = {
         extra_request_body = {
@@ -108,11 +108,15 @@ return {
           avante_llm_summarize_memory = false,
         },
         providers = {
-          ['cody-claude-3.5'] = {
+          ['sg-claude-4'] = {
+            model = 'anthropic::2024-10-22::claude-sonnet-4-latest',
+            endpoint = 'https://canstar.sourcegraphcloud.com',
+            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
+          },
+          ['sg-claude-3.5'] = {
             model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
             endpoint = 'https://canstar.sourcegraphcloud.com',
             api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
-            disable_tools = false,
           },
           ['cody-claude-3.7'] = {
             endpoint = 'https://canstar.sourcegraphcloud.com',
