@@ -386,5 +386,5 @@ end
 
 -- Only proceed if we're in the quote-service repository
 if is_quote_service_repo() then
-  setup()
+  -- setup()
 end

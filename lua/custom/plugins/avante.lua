@@ -1,5 +1,3 @@
-local avante_cody = require 'custom.scripts.avante-cody'
-
 return {
   'yetone/avante.nvim',
   dev = true,
@@ -8,17 +6,22 @@ return {
   lazy = true,
   version = false, -- set this if you want to always pull the latest change
   opts = {
+    mode = 'legacy',
     -- add any opts here
-    provider = 'work-cody',
-    auto_suggestions_provider = 'work-cody',
-    copilot = {
-      endpoint = 'https://api.githubcopilot.com',
-      model = 'claude-3.5-sonnet',
-      proxy = nil, -- [protocol://]host[:port] Use this proxy
-      allow_insecure = false, -- Allow insecure server connections
-      timeout = 30000, -- Timeout in milliseconds
-      temperature = 0,
-      max_tokens = 4096,
+    provider = 'cody-claude-3.5',
+    auto_suggestions_provider = 'cody-claude-3.5',
+    providers = {
+      copilot = {
+        extra_request_body = {
+          temperature = 0,
+          max_tokens = 4096,
+        },
+        endpoint = 'https://api.githubcopilot.com',
+        model = 'claude-3.5-sonnet',
+        proxy = nil, -- [protocol://]host[:port] Use this proxy
+        allow_insecure = false, -- Allow insecure server connections
+        timeout = 30000, -- Timeout in milliseconds
+      },
     },
     behaviour = {
       auto_suggestions = false, -- Experimental stage
@@ -30,6 +33,8 @@ return {
     mappings = {
       suggestion = {
         accept = '<C-a>',
+        next = '<C-s>',
+        prev = '<C-S>',
       },
     },
     repo_map = {
@@ -42,37 +47,19 @@ return {
         previewer = require('telescope.config').values.file_previewer {},
       },
     },
-    vendors = {
-      ['work-cody'] = {
-        model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
-        endpoint = 'https://canstar.sourcegraphcloud.com',
-        api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
-        max_tokens = 15000,
-        stream = false,
-        topK = avante_cody.topK,
-        topP = avante_cody.topP,
-        proxy = avante_cody.proxy,
-        allow_insecure = avante_cody.allow_insecure,
-        timeout = avante_cody.timeout,
-        temperature = avante_cody.temperature,
-        parse_curl_args = avante_cody.parse_curl_args,
-        parse_response_data = avante_cody.parse_response_data,
-      },
-      ['cody'] = {
-        model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
-        endpoint = 'https://sourcegraph.com',
-        api_key_name = 'cmd:op read --account my.1password.com op://Developer/sourcegraph_apikey/credential',
-        max_tokens = avante_cody.max_output_tokens,
-        topK = avante_cody.topK,
-        topP = avante_cody.topP,
-        proxy = avante_cody.proxy,
-        allow_insecure = avante_cody.allow_insecure,
-        timeout = avante_cody.timeout,
-        temperature = avante_cody.temperature,
-        parse_curl_args = avante_cody.parse_curl_args,
-        parse_response_data = avante_cody.parse_response_data,
-      },
-    },
+    disabled_tools = { 'insert', 'create', 'str_replace', 'replace_in_file', 'python' },
+    -- system_prompt as function ensures LLM always has latest MCP server state
+    -- This is evaluated for every message, even in existing chats
+    -- system_prompt = function()
+    --   local hub = require('mcphub').get_hub_instance()
+    --   return hub and hub:get_active_servers_prompt() or ''
+    -- end,
+    -- -- Using function prevents requiring mcphub before it's loaded
+    -- custom_tools = function()
+    --   return {
+    --     require('mcphub.extensions.avante').mcp_tool(),
+    --   }
+    -- end,
   },
   -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
   build = 'make',
@@ -84,12 +71,6 @@ return {
     'MunifTanjim/nui.nvim',
     --- The below dependencies are optional,
     'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
-    {
-      'zbirenbaum/copilot.lua',
-      config = function()
-        require('copilot').setup {}
-      end,
-    }, -- for providers='copilot'
     {
       -- support for image pasting
       'HakonHarnes/img-clip.nvim',
@@ -114,6 +95,39 @@ return {
         file_types = { 'markdown', 'Avante' },
       },
       ft = { 'markdown', 'Avante' },
+    },
+    {
+      'brewinski/avante-cody.nvim',
+      dev = true,
+      dir = '~/Documents/github/avante-cody.nvim',
+      opts = {
+        debug = true,
+        logfile = 'avante-cody.nvim.log',
+        override = {
+          avante_llm_summarize_chat_thread = false,
+          avante_llm_summarize_memory = false,
+        },
+        providers = {
+          ['cody-claude-3.5'] = {
+            model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
+            endpoint = 'https://canstar.sourcegraphcloud.com',
+            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
+            disable_tools = false,
+          },
+          ['cody-claude-3.7'] = {
+            endpoint = 'https://canstar.sourcegraphcloud.com',
+            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
+          },
+          ['cody/chrisandemma'] = {
+            api_key_name = 'SG_API_KEY',
+          },
+          ['cody-claude-3.7-extended-thinking'] = {
+            model = 'anthropic::2024-10-22::claude-3-7-sonnet-extended-thinking',
+            endpoint = 'https://canstar.sourcegraphcloud.com',
+            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
+          },
+        },
+      },
     },
   },
 }

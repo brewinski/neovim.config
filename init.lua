@@ -628,6 +628,8 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
+        -- zig
+        zls = {},
         -- python
         pyright = {},
         -- language C
@@ -639,6 +641,7 @@ require('lazy').setup({
               staticcheck = true,
               gofumpt = true,
               usePlaceholders = true,
+              buildFlags = { '-tags=integration' },
             },
           },
         },
@@ -655,11 +658,41 @@ require('lazy').setup({
         --
         angularls = {},
         vtsls = {},
-
         lua_ls = {
           -- cmd = {...},
           -- filetypes = { ...},
           -- capabilities = {},
+          on_init = function(client)
+            vim.print(vim.inspect(client.workspace_folders))
+            if client.workspace_folders then
+              local path = client.workspace_folders[1].name
+              vim.print(vim.inspect(path))
+              if vim.loop.fs_stat(path .. '/.luarc.json') or vim.loop.fs_stat(path .. '/.luarc.jsonc') then
+                vim.print 'returning'
+                return
+              end
+            end
+
+            client.config.settings.Lua = vim.tbl_deep_extend('force', client.config.settings.Lua, {
+              runtime = {
+                -- Tell the language server which version of Lua you're using
+                -- (most likely LuaJIT in the case of Neovim)
+                version = 'LuaJIT',
+              },
+              -- Make the server aware of Neovim runtime files
+              workspace = {
+                checkThirdParty = false,
+                library = {
+                  vim.env.VIMRUNTIME,
+                  -- Depending on the usage, you might want to add additional paths here.
+                  -- "${3rd}/luv/library"
+                  -- "${3rd}/busted/library",
+                },
+                -- or pull in all of 'runtimepath'. NOTE: this is a lot slower and will cause issues when working on your own configuration (see https://github.com/neovim/nvim-lspconfig/issues/3189)
+                -- library = vim.api.nvim_get_runtime_file("", true)
+              },
+            })
+          end,
           settings = {
             Lua = {
               completion = {
@@ -884,7 +917,7 @@ require('lazy').setup({
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
       -- vim.cmd.colorscheme 'tokyonight-night'
-      vim.cmd.colorscheme 'catppuccin'
+      vim.cmd.colorscheme 'catppuccin-frappe'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
@@ -955,6 +988,8 @@ require('lazy').setup({
         'graphql',
         'python',
         'terraform',
+        'sql',
+        'javascript',
       },
       -- Autoinstall languages that are not installed
       auto_install = true,
@@ -966,6 +1001,14 @@ require('lazy').setup({
         additional_vim_regex_highlighting = { 'ruby' },
       },
       indent = { enable = true, disable = { 'ruby' } },
+      incremental_selection = {
+        enable = true,
+      },
+      query_linter = {
+        enable = true,
+        use_virtual_text = true,
+        lint_events = { 'BufWrite', 'CursorHold' },
+      },
     },
     -- There are additional nvim-treesitter modules that you can use to interact
     -- with nvim-treesitter. You should go explore a few and see what interests you:
