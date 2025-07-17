@@ -6,7 +6,7 @@ return {
   lazy = true,
   version = false, -- set this if you want to always pull the latest change
   opts = {
-    mode = 'legacy',
+    mode = 'agentic',
     -- add any opts here
     provider = 'sg-claude-4',
     auto_suggestions_provider = 'sg-claude-4',
@@ -29,6 +29,7 @@ return {
       auto_set_keymaps = true,
       auto_apply_diff_after_generation = false,
       support_paste_from_clipboard = false,
+      enable_token_counting = false,
     },
     mappings = {
       suggestion = {
@@ -40,26 +41,30 @@ return {
     repo_map = {
       ignore_patterns = { '%.git', '%.worktree', '__pycache__', 'node_modules', 'providers', 'vendor' }, -- ignore files matching these
     },
-    file_selector = {
+    selector = {
       provider = 'telescope',
       -- Options override for custom providers
       provider_opts = {
         previewer = require('telescope.config').values.file_previewer {},
       },
     },
-    disabled_tools = { 'insert', 'create', 'str_replace', 'replace_in_file', 'python' },
+    disabled_tools = {
+      'run_python',
+      'web_search',
+      'dispatch_agent',
+    },
     -- system_prompt as function ensures LLM always has latest MCP server state
     -- This is evaluated for every message, even in existing chats
-    -- system_prompt = function()
-    --   local hub = require('mcphub').get_hub_instance()
-    --   return hub and hub:get_active_servers_prompt() or ''
-    -- end,
-    -- -- Using function prevents requiring mcphub before it's loaded
-    -- custom_tools = function()
-    --   return {
-    --     require('mcphub.extensions.avante').mcp_tool(),
-    --   }
-    -- end,
+    system_prompt = function()
+      local hub = require('mcphub').get_hub_instance()
+      return hub and hub:get_active_servers_prompt() or ''
+    end,
+    -- Using function prevents requiring mcphub before it's loaded
+    custom_tools = function()
+      return {
+        require('mcphub.extensions.avante').mcp_tool(),
+      }
+    end,
   },
   -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
   build = 'make',
@@ -101,8 +106,8 @@ return {
       dev = true,
       dir = '~/Documents/github/avante-cody.nvim',
       opts = {
-        debug = true,
-        logfile = 'avante-cody.nvim.log',
+        -- logfile = 'avante-cody.nvim.log',
+        logfile = false,
         override = {
           avante_llm_summarize_chat_thread = false,
           avante_llm_summarize_memory = false,
@@ -111,25 +116,29 @@ return {
           ['sg-claude-4'] = {
             model = 'anthropic::2024-10-22::claude-sonnet-4-latest',
             endpoint = 'https://canstar.sourcegraphcloud.com',
-            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
+            -- endpoint = 'env:SRC_INSTANCE_NAME',
+            -- endpoint = 'cmd:echo "https://canstar.sourcegraphcloud.com"',
+            api_key_name = 'SG_API_TOKEN',
           },
-          ['sg-claude-3.5'] = {
-            model = 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
+          ['sg-personal'] = {
+            model = 'anthropic::2024-10-22::claude-sonnet-4-latest',
+            api_key_name = 'SG_API_TOKEN_PERSONAL',
+          },
+          -- ['sg-claude-4-thinking'] = {
+          --   model = 'anthropic::2024-10-22::claude-sonnet-4-thinking-latest',
+          --   endpoint = 'https://canstar.sourcegraphcloud.com',
+          --   api_key_name = 'SG_API_TOKEN',
+          -- },
+          ['sg-opus-4'] = {
+            model = 'anthropic::2024-10-22::claude-opus-4-latest',
             endpoint = 'https://canstar.sourcegraphcloud.com',
-            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
+            api_key_name = 'SG_API_TOKEN',
           },
-          ['cody-claude-3.7'] = {
-            endpoint = 'https://canstar.sourcegraphcloud.com',
-            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
-          },
-          ['cody/chrisandemma'] = {
-            api_key_name = 'SG_API_KEY',
-          },
-          ['cody-claude-3.7-extended-thinking'] = {
-            model = 'anthropic::2024-10-22::claude-3-7-sonnet-extended-thinking',
-            endpoint = 'https://canstar.sourcegraphcloud.com',
-            api_key_name = 'cmd:op read --account canstar.1password.com op://Employee/sourcegraph_apikey/credential',
-          },
+          -- ['sg-opus-4-thinking'] = {
+          --   model = 'anthropic::2024-10-22::claude-opus-4-thinking-latest',
+          --   endpoint = 'https://canstar.sourcegraphcloud.com',
+          --   api_key_name = 'SG_API_TOKEN',
+          -- },
         },
       },
     },

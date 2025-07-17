@@ -6,7 +6,7 @@ local M = {}
 
 M.endpoint = 'https://sourcegraph.com'
 M.api_key_name = 'SRC_ACCESS_TOKEN'
-M.max_tokens = 7000
+M.max_tokens = 30000
 M.max_output_tokens = 4000
 M.stream = true
 M.topK = -1
@@ -24,6 +24,36 @@ M.role_map = {
   assistant = 'assistant',
   system = 'system',
 }
+
+function M.transform_tool(tool)
+  local input_schema_properties = {}
+  local required = {}
+  for _, field in ipairs(tool.param.fields) do
+    input_schema_properties[field.name] = {
+      type = field.type,
+      description = field.description,
+    }
+    if not field.optional then
+      table.insert(required, field.name)
+    end
+  end
+  local res = {
+    type = 'function',
+    ['function'] = {
+      name = tool.name,
+      description = tool.description,
+    },
+  }
+  if vim.tbl_count(input_schema_properties) > 0 then
+    res['function'].parameters = {
+      type = 'object',
+      properties = input_schema_properties,
+      required = required,
+      additionalProperties = false,
+    }
+  end
+  return res
+end
 
 M.parse_context_messages = function(context)
   local codebase_context = {}
@@ -59,20 +89,65 @@ M.parse_messages = function(opts)
     table.insert(messages, { speaker = M.role_map[msg.role], text = msg.content })
   end)
 
-  -- vim.api.nvim_notify(vim.inspect(messages), 1, {})
+  if opts.tool_histories then
+    for _, tool_history in ipairs(opts.tool_histories) do
+      table.insert(messages, {
+        speaker = 'user',
+        content = tool_history.tool_result.content,
+        tool_call_id = tool_history.tool_result.tool_use_id,
+      })
+    end
+    -- vim.api.nvim_notify(vim.inspect(messages), 1, {})
+  end
 
   return messages
 end
 
-M.parse_response_data = function(data_stream, event_state, opts)
+M.parse_response_without_stream = function(data, state, opts)
+  local json = vim.json.decode(data)
+  local completion = json.completion
+  local tool_calls = json.tool_calls
+  local stopReason = json.stopReason
+  local usage = json.usage
+
+  vim.print(vim.inspect { opts = opts })
+
+  opts.on_chunk(completion or '')
+
+  if stopReason == 'tool_use' then
+    vim.schedule(function()
+      local tools = {}
+
+      for _, tool in ipairs(tool_calls) do
+        table.insert(tools, {
+          id = tool.id,
+          name = tool['function'].name,
+          input_json = tool['function'].arguments,
+        })
+      end
+
+      opts.on_stop {
+        reason = 'tool_use',
+        usage = usage,
+        tool_use_list = tools,
+      }
+    end)
+
+    return
+  end
+
+  opts.on_stop {}
+end
+
+M.parse_response_data = function(ctx, data_stream, event_state, opts)
   if event_state == 'done' then
-    opts.on_complete()
+    opts.on_stop {}
     return
   end
 
   if event_state == 'error' then
     vim.notify(vim.inspect { name = 'codyProvider', stream = data_stream, state = event_state, opts = opts }, 1, {})
-    opts.on_complete(data_stream)
+    opts.on_stop(data_stream)
     return
   end
 
@@ -82,14 +157,47 @@ M.parse_response_data = function(data_stream, event_state, opts)
 
   local json = vim.json.decode(data_stream)
   local delta = json.deltaText
+  local tool_use = json.delta_tool_calls
   local stopReason = json.stopReason
+  local usage = json.usage
 
-  if stopReason == 'end_turn' then
-    -- opts.on_chunk('\n\n## context files:\n  - ' .. table.concat(M.get_context_file_list(M.cody_context), '\n  - '))
+  if delta ~= nil and delta ~= '' then
+    opts.on_chunk(delta)
+  end
+
+  if tool_use and tool_use[1] then
+    ctx.tool_use = ctx.tool_use or { {
+      id = '',
+      name = '',
+      input_json = '',
+    } }
+
+    local tool_use_ctx = ctx.tool_use
+    local current_tool = tool_use_ctx[1]
+    local tool = tool_use[1]
+
+    current_tool.id = current_tool.id .. tool.id
+    current_tool.name = current_tool.name .. tool['function'].name
+    current_tool.input_json = current_tool.input_json .. tool['function'].arguments
+
+    ctx.tool_use[1] = current_tool
+  end
+
+  if stopReason == 'tool_use' then
+    vim.print(vim.inspect { ctx.tool_use })
+    opts.on_stop {
+      reason = 'tool_use',
+      usage = usage,
+      tool_use_list = ctx.tool_use,
+    }
     return
   end
 
-  opts.on_chunk(delta)
+  if stopReason == 'end_turn' then
+    -- opts.on_chunk('\n\n## context files:\n  - ' .. table.concat(M.get_context_file_list(M.cody_context), '\n  - '))
+    opts.on_stop { reason = 'complete', useage = usage }
+    return
+  end
 end
 
 M.get_context_file_list = function(context)
@@ -164,8 +272,17 @@ M.parse_curl_args = function(provider, code_opts)
   -- M.get_cody_context(base.endpoint, context_query, api_key)
   -- vim.api.nvim_notify(api_key.. "\n\n\n\n\n\n", 1, {})
 
+  local tools = nil
+  if not disable_tools and code_opts.tools then
+    tools = {}
+    for _, tool in ipairs(code_opts.tools) do
+      table.insert(tools, M.transform_tool(tool))
+    end
+  end
+
   return {
-    url = base.endpoint .. '/.api/completions/stream?api-version=2&client-name=vscode&client-version=1.34.3',
+    -- url = base.endpoint .. '/.api/llm/chat/completions',
+    url = base.endpoint .. '/.api/completions/stream?api-version=7&client-name=vscode&client-version=1.34.3',
     timeout = base.timeout,
     insecure = false,
     headers = headers,
@@ -177,6 +294,7 @@ M.parse_curl_args = function(provider, code_opts)
       maxTokensToSample = M.max_output_tokens,
       stream = true,
       messages = M.parse_messages(code_opts),
+      tools = tools,
     }, {}),
   }
 end
