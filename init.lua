@@ -628,6 +628,10 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
+        -- bash
+        bashls = {},
+        -- json
+        jsonls = {},
         -- zig
         zls = {},
         -- python
@@ -779,11 +783,12 @@ require('lazy').setup({
         rust = { 'rustfmt' },
         c = { 'clang-format' },
         terraform = { 'terraform_fmt' },
+        sh = { 'shfmt' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { 'isort', 'black' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        -- javascript = { 'prettierd', 'prettier', stop_after_first = true },
       },
     },
   },
@@ -990,6 +995,8 @@ require('lazy').setup({
         'terraform',
         'sql',
         'javascript',
+        'json',
+        'jsonc',
       },
       -- Autoinstall languages that are not installed
       auto_install = true,
